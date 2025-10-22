@@ -77,19 +77,19 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-emerald-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-3 sm:gap-0">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-emerald-700">📅 RezApp</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-emerald-700">📅 RezApp</h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
               {user ? (
                 <>
-                  <span className="text-gray-600">Hoş geldin, {user.email}</span>
+                  <span className="text-sm sm:text-base text-gray-600 w-full sm:w-auto truncate">Hoş geldin, {user.email}</span>
                   {/* Owner ve Business Owner için Admin Panel */}
                   {(userRole === 'owner' || userRole === 'business_owner') && (
                     <Link 
                       href="/admin" 
-                      className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm"
+                      className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm text-sm sm:text-base whitespace-nowrap"
                     >
                       Yönetim Paneli
                     </Link>
@@ -98,20 +98,15 @@ export default function HomePage() {
                   {userRole === 'staff' && (
                     <Link 
                       href="/staff" 
-                      className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm"
+                      className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm text-sm sm:text-base whitespace-nowrap"
                     >
                       Takvim
                     </Link>
                   )}
-                  <Link 
-                    href="/debug" 
-                    className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors"
-                  >
-                    🔍 Debug
-                  </Link>
+                  {/* Debug button removed for production */}
                   <button 
                     onClick={handleLogout}
-                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                    className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base whitespace-nowrap"
                   >
                     Çıkış
                   </button>
@@ -119,7 +114,7 @@ export default function HomePage() {
               ) : (
                 <Link 
                   href="/login" 
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm"
+                  className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm text-sm sm:text-base whitespace-nowrap"
                 >
                   Giriş Yap
                 </Link>

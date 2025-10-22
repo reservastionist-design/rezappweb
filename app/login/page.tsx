@@ -103,7 +103,7 @@ export default function LoginPage() {
             console.error('Profil oluşturma hatası:', profileError);
           }
 
-          setSuccess('Kayıt başarılı! E-posta adresinizi kontrol edin.');
+          setSuccess('Kayıt başarılı! Şifreniz ile giriş yapabilirsiniz.');
         }
       }
     } catch (error) {
@@ -202,19 +202,21 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-3">
               {isLogin && !forgotPassword && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForgotPassword(true);
-                    setError('');
-                    setSuccess('');
-                  }}
-                  className="text-emerald-600 hover:text-emerald-500 text-sm transition-colors duration-200"
-                >
-                  Şifremi unuttum
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPassword(true);
+                      setError('');
+                      setSuccess('');
+                    }}
+                    className="text-emerald-600 hover:text-emerald-500 text-sm transition-colors duration-200"
+                  >
+                    Şifremi unuttum
+                  </button>
+                </div>
               )}
               
               {forgotPassword && (

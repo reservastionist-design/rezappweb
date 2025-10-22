@@ -425,21 +425,21 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-slate-700">📅 RezApp Admin</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-700">📅 RezApp Admin</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600">Hoş geldin, {user?.email}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <span className="text-sm sm:text-base text-gray-600">Hoş geldin, {user?.email}</span>
               <Link 
                 href="/" 
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base"
               >
                 Ana Sayfa
               </Link>
               <button 
                 onClick={handleLogout}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+                className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors text-sm sm:text-base"
               >
                 Çıkış
               </button>
@@ -451,27 +451,27 @@ export default function AdminPage() {
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <Link href="/admin" className="border-b-2 border-slate-600 text-slate-600 py-4 font-medium">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
+            <Link href="/admin" className="border-b-2 border-slate-600 text-slate-600 py-4 font-medium whitespace-nowrap text-sm sm:text-base">
               Dashboard
             </Link>
-            <Link href="/admin/businesses" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200">
+            <Link href="/admin/businesses" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               İşletmeler
             </Link>
-            <Link href="/admin/services" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200">
+            <Link href="/admin/services" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Hizmetler
             </Link>
-            <Link href="/admin/staff" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200">
+            <Link href="/admin/staff" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Personel
             </Link>
-            <Link href="/admin/availability" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200">
+            <Link href="/admin/availability" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Müsaitlik
             </Link>
-            <Link href="/admin/appointments" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200">
+            <Link href="/admin/appointments" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Randevular
             </Link>
             {user?.email === 'furkanaydemirie@gmail.com' && (
-              <Link href="/super-admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200">
+              <Link href="/super-admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
                 Business Owner Panel
               </Link>
             )}
@@ -502,26 +502,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Debug Section */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium text-blue-800">🔧 Debug</h3>
-              <p className="text-sm text-blue-600">Supabase bağlantısını test et</p>
-            </div>
-            <button
-              onClick={testSupabaseConnection}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
-            >
-              Bağlantıyı Test Et
-            </button>
-          </div>
-          {debugInfo && (
-            <div className="mt-3 p-3 bg-white rounded border text-sm font-mono">
-              {debugInfo}
-            </div>
-          )}
-        </div>
+        {/* Debug Section - Removed for production */}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

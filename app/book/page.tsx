@@ -375,20 +375,20 @@ export default function BookPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Randevu Al</h1>
-          <p className="text-gray-600">İstediğiniz hizmeti seçin ve randevunuzu oluşturun</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Randevu Al</h1>
+          <p className="text-sm sm:text-base text-gray-600">İstediğiniz hizmeti seçin ve randevunuzu oluşturun</p>
         </div>
 
         {/* Progress Steps */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-4">
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {[1, 2, 3, 4].map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
                   step >= stepNumber 
                     ? 'bg-emerald-600 text-white' 
                     : 'bg-gray-300 text-gray-600'
@@ -396,7 +396,7 @@ export default function BookPage() {
                   {stepNumber}
                 </div>
                 {stepNumber < 4 && (
-                  <div className={`w-16 h-1 mx-2 ${
+                  <div className={`w-8 sm:w-16 h-1 mx-1 sm:mx-2 ${
                     step > stepNumber ? 'bg-emerald-600' : 'bg-gray-300'
                   }`} />
                 )}
@@ -485,8 +485,8 @@ export default function BookPage() {
 
             {/* Weekly Calendar */}
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3">Tarih Seçin</h3>
-              <div className="grid grid-cols-7 gap-2">
+              <h3 className="text-base sm:text-lg font-medium mb-3">Tarih Seçin</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2">
                 {getWeekDates().map((date) => {
                   const dateStr = formatDate(date);
                   const dateDisplay = formatDateDisplay(date);
@@ -496,14 +496,14 @@ export default function BookPage() {
                     <button
                       key={dateStr}
                       onClick={() => handleDateSelect(dateStr)}
-                      className={`p-3 rounded-lg border text-center ${
+                      className={`p-2 sm:p-3 rounded-lg border text-center ${
                         isSelected
                           ? 'bg-emerald-600 text-white border-emerald-600'
                           : 'bg-white border-gray-300 hover:border-emerald-500'
                       }`}
                     >
-                      <div className="text-sm font-medium">{dateDisplay.day}</div>
-                      <div className="text-lg font-bold">{dateDisplay.date}</div>
+                      <div className="text-xs sm:text-sm font-medium">{dateDisplay.day}</div>
+                      <div className="text-base sm:text-lg font-bold">{dateDisplay.date}</div>
                       <div className="text-xs">{dateDisplay.month}</div>
                     </button>
                   );
@@ -514,14 +514,14 @@ export default function BookPage() {
             {/* Time Slots */}
             {selectedDate && (
               <div>
-                <h3 className="text-lg font-medium mb-3">Saat Seçin</h3>
+                <h3 className="text-base sm:text-lg font-medium mb-3">Saat Seçin</h3>
                 {availableSlots.length > 0 ? (
-                  <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                     {availableSlots.map((slot) => (
                       <button
                         key={slot.time}
                         onClick={() => handleTimeSelect(slot.time)}
-                        className={`p-3 rounded-lg border text-center ${
+                        className={`p-2 sm:p-3 rounded-lg border text-center text-sm sm:text-base ${
                           slot.available
                             ? 'bg-white border-gray-300 hover:border-emerald-500 hover:bg-emerald-50'
                             : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'

@@ -549,28 +549,28 @@ export default function AdminPage() {
 
         {/* Weekly Calendar */}
         <div className="mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-100">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-slate-800">📅 Haftalık Randevu Takvimi</h3>
-              <div className="flex items-center space-x-2">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-slate-100">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+              <h3 className="text-lg sm:text-xl font-semibold text-slate-800">📅 Haftalık Randevu Takvimi</h3>
+              <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
                 <button
                   onClick={goToPreviousWeek}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200 text-lg sm:text-base"
                 >
                   ←
                 </button>
                 <button
                   onClick={goToCurrentWeek}
-                  className="px-3 py-1 text-sm bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors duration-200"
+                  className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors duration-200 whitespace-nowrap"
                 >
                   Bu Hafta
                 </button>
-                <span className="font-medium text-slate-800 min-w-[200px] text-center">
+                <span className="font-medium text-slate-800 text-xs sm:text-base text-center min-w-[120px] sm:min-w-[200px]">
                   {currentWeekStart.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} - {new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
                 <button
                   onClick={goToNextWeek}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200 text-lg sm:text-base"
                 >
                   →
                 </button>
@@ -578,7 +578,7 @@ export default function AdminPage() {
             </div>
 
             {/* Weekly Calendar Grid */}
-            <div className="grid grid-cols-7 gap-1 mb-4">
+            <div className="hidden sm:grid grid-cols-7 gap-1 mb-4">
               {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
                 <div key={day} className="p-2 text-center text-sm font-medium text-slate-500">
                   {day}
@@ -586,7 +586,19 @@ export default function AdminPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
+            {/* Mobile: Horizontal scroll for calendar */}
+            <div className="sm:hidden overflow-x-auto mb-4">
+              <div className="flex gap-2 min-w-max pb-2">
+                {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(day => (
+                  <div key={day} className="min-w-[100px] text-center text-xs font-medium text-slate-500">
+                    {day}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden sm:grid grid-cols-7 gap-1">
               {getWeekDays(currentWeekStart).map((day, index) => {
                 const dayAppointments = getAppointmentsForDate(day);
                 const isToday = day.toDateString() === new Date().toDateString();
@@ -594,61 +606,93 @@ export default function AdminPage() {
                 return (
                   <div
                     key={index}
-                    className={`min-h-[120px] p-2 border border-slate-200 bg-white ${
-                      isToday ? 'bg-emerald-50 border-emerald-300' : ''
+                    className={`min-h-[140px] p-3 border-2 rounded-lg transition-all duration-200 ${
+                      isToday ? 'bg-emerald-50 border-emerald-400 shadow-md' : 'bg-white border-slate-200'
                     }`}
                   >
-                    <div className={`text-sm font-medium mb-2 ${
+                    <div className={`text-sm font-semibold mb-2 flex items-center justify-between ${
                       isToday ? 'text-emerald-700' : 'text-slate-800'
                     }`}>
-                      {day.getDate()}
+                      <span>{day.getDate()}</span>
                       {dayAppointments.length > 0 && (
-                        <span className="ml-1 text-xs bg-emerald-100 text-emerald-700 px-1 rounded">
+                        <span className="text-xs bg-emerald-500 text-white px-1.5 py-0.5 rounded-full font-normal">
                           {dayAppointments.length}
                         </span>
                       )}
-                      <div className="text-[8px] text-slate-400">
-                        {day.toISOString().split('T')[0]}
-                      </div>
                     </div>
-                    <div className="space-y-1">
-                      {dayAppointments.map(appointment => (
-                        <div
-                          key={appointment.id}
-                          className={`text-xs p-2 rounded border ${getStatusColor(appointment.status)}`}
-                          title={`${appointment.customer_name} - ${appointment.services?.name || 'Hizmet'} - ${appointment.services?.businesses?.name || 'İşletme'}`}
-                        >
-                          <div className="truncate font-medium">{appointment.appointment_time}</div>
-                          <div className="truncate text-slate-600">{appointment.customer_name}</div>
-                          <div className="truncate text-slate-500 text-[10px]">
-                            {appointment.services?.businesses?.name || 'İşletme'}
+                    <div className="space-y-2">
+                      {dayAppointments.length > 0 ? (
+                        dayAppointments.map(appointment => (
+                          <div
+                            key={appointment.id}
+                            className={`text-xs p-2 rounded-lg transition-all duration-200 hover:shadow-sm cursor-pointer ${getStatusColor(appointment.status)}`}
+                            title={`${appointment.customer_name} - ${appointment.services?.name || 'Hizmet'} - ${appointment.services?.businesses?.name || 'İşletme'}`}
+                          >
+                            <div className="font-medium mb-1">{appointment.appointment_time}</div>
+                            <div className="text-slate-700 truncate">{appointment.customer_name}</div>
+                            <div className="text-slate-500 text-[10px] truncate mt-1">
+                              {appointment.services?.businesses?.name || 'İşletme'}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <div className="text-xs text-slate-400 italic">Randevu yok</div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Debug Info */}
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <h4 className="text-sm font-medium text-slate-800 mb-2">Debug Bilgisi</h4>
-              <div className="text-xs text-slate-600 mb-2">
-                Toplam randevu sayısı: {appointments.length}
-              </div>
-              {appointments.length > 0 && (
-                <div className="text-xs text-slate-600">
-                  İlk randevu: {appointments[0]?.appointment_date} - {appointments[0]?.appointment_time}
-                </div>
-              )}
-              <div className="text-xs text-slate-600 mt-2">
-                Bu hafta: {currentWeekStart.toISOString().split('T')[0]} - {new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-              </div>
-              <div className="text-xs text-slate-600">
-                Bugün: {new Date().toISOString().split('T')[0]}
+            {/* Mobile: Horizontal scroll layout */}
+            <div className="sm:hidden overflow-x-auto">
+              <div className="flex gap-2 min-w-max pb-4">
+                {getWeekDays(currentWeekStart).map((day, index) => {
+                  const dayAppointments = getAppointmentsForDate(day);
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  
+                  return (
+                    <div
+                      key={index}
+                      className={`min-w-[140px] p-3 border-2 rounded-lg ${
+                        isToday ? 'bg-emerald-50 border-emerald-400' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <div className={`text-sm font-semibold mb-2 ${
+                        isToday ? 'text-emerald-700' : 'text-slate-800'
+                      }`}>
+                        {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][index]} {day.getDate()}
+                        {dayAppointments.length > 0 && (
+                          <span className="ml-1 text-xs bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
+                            {dayAppointments.length}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {dayAppointments.length > 0 ? (
+                          dayAppointments.map(appointment => (
+                            <div
+                              key={appointment.id}
+                              className={`text-xs p-2 rounded-lg ${getStatusColor(appointment.status)}`}
+                            >
+                              <div className="font-medium mb-1">{appointment.appointment_time}</div>
+                              <div className="text-slate-700">{appointment.customer_name}</div>
+                              <div className="text-slate-500 text-[10px] mt-1">
+                                {appointment.services?.businesses?.name || 'İşletme'}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-xs text-slate-400 italic">Randevu yok</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Debug Info - Removed for production */}
 
             {/* Legend */}
             <div className="mt-4 pt-4 border-t border-slate-200">

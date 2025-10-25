@@ -55,28 +55,45 @@ export default function SuperAdminPage() {
 
   const loadUsers = async () => {
     try {
-      // Sadece business_owner rolündeki kullanıcıları getir
+      console.log('🔍 Loading business owners...');
+      
+      // Sadece business_owner rolündeki kullanıcıları getir + işletme bilgileri
+      // business_id foreign key kullanarak businesses tablosunu join et
       const { data: users, error } = await supabase
         .from('profiles')
         .select(`
           *,
           businesses!profiles_business_id_fkey (
+            id,
             name,
-            district
+            district,
+            address
           )
         `)
         .eq('role', 'business_owner')
         .order('email', { ascending: true });
 
+      console.log('📊 Query result:', { users, error });
+
       if (error) {
-        console.error('Users load error:', error);
+        console.error('❌ Users load error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        setUsers([]);
         return;
       }
 
-      console.log('Business owners loaded:', users);
-      setUsers(users || []);
+      if (!users) {
+        console.log('⚠️ No users returned from query');
+        setUsers([]);
+        return;
+      }
+
+      console.log('✅ Business owners loaded:', users);
+      console.log('📈 Total business owners:', users.length);
+      setUsers(users);
     } catch (error) {
-      console.error('Users load error:', error);
+      console.error('💥 Exception in loadUsers:', error);
+      setUsers([]);
     }
   };
 
@@ -88,48 +105,37 @@ export default function SuperAdminPage() {
     try {
       console.log('Adding business owner:', newBusinessOwner.email);
       
-      // Önce profil var mı kontrol et
-      const { data: existingProfile } = await supabase
+      // Direkt Supabase ile güncelle
+      const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, role')
         .eq('email', newBusinessOwner.email)
-        .single();
+        .maybeSingle();
 
-      console.log('Existing profile:', existingProfile);
+      if (checkError) {
+        console.error('Profil kontrol hatası:', checkError);
+        setMessage('Hata: ' + checkError.message);
+        return;
+      }
 
-      if (existingProfile) {
-        // Profil varsa güncelle
-        console.log('Updating existing profile');
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            role: 'business_owner',
-            business_id: null
-          })
-          .eq('email', newBusinessOwner.email);
+      if (!existingProfile) {
+        setMessage('Hata: Bu email adresi sistemde kayıtlı değil. Önce /login sayfasından kayıt olmalı.');
+        return;
+      }
 
-        if (error) {
-          console.error('Update error:', error);
-          setMessage('Hata: ' + error.message);
-          return;
-        }
-      } else {
-        // Profil yoksa oluştur
-        console.log('Creating new profile');
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            email: newBusinessOwner.email,
-            role: 'business_owner',
-            business_id: null,
-            auth_user_id: null
-          });
+      // Profil varsa, business_owner yap
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          role: 'business_owner',
+          business_id: null
+        })
+        .eq('email', newBusinessOwner.email);
 
-        if (error) {
-          console.error('Insert error:', error);
-          setMessage('Hata: ' + error.message);
-          return;
-        }
+      if (updateError) {
+        console.error('Güncelleme hatası:', updateError);
+        setMessage('Hata: ' + updateError.message);
+        return;
       }
 
       setMessage('Kullanıcı başarıyla business owner yapıldı!');

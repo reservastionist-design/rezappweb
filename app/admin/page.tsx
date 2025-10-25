@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import Link from 'next/link';
 
 export default function AdminPage() {
@@ -52,7 +51,7 @@ export default function AdminPage() {
       // Business owner kontrolü
       console.log('🔍 Checking business owner for user:', session.user.email, 'ID:', session.user.id);
       
-      const { data: profile, error: profileError } = await supabaseAdmin
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, business_id')
         .eq('auth_user_id', session.user.id)
@@ -73,6 +72,15 @@ export default function AdminPage() {
 
       // Business owner için data yükle
       console.log('Setting userBusinessId:', profile.business_id);
+      
+      // GÜVENLİK: Business ID kontrolü
+      if (!profile.business_id) {
+        console.error('Business owner has no business_id assigned!');
+        setError('⚠️ Size henüz bir işletme atanmamış. Lütfen sistem yöneticisi ile iletişime geçin.');
+        setLoading(false);
+        return;
+      }
+      
       setUserBusinessId(profile.business_id);
       await loadStats(false, profile.business_id);
       await loadAppointments(false, profile.business_id);
@@ -97,67 +105,57 @@ export default function AdminPage() {
       let appointmentCount = 0;
 
       if (actualIsOwner) {
-        // Owner tüm verileri görebilir - supabaseAdmin kullan
+        // Owner tüm verileri görebilir - RLS policy sayesinde
         console.log('Loading stats for Owner...');
         
-        const { count: businesses, error: businessesError } = await supabaseAdmin
+        const { count: businesses, error: businessesError } = await supabase
           .from('businesses')
           .select('*', { count: 'exact', head: true });
         console.log('Businesses count:', businesses, 'Error:', businessesError);
         businessCount = businesses || 0;
 
-        const { count: services, error: servicesError } = await supabaseAdmin
+        const { count: services, error: servicesError } = await supabase
           .from('services')
           .select('*', { count: 'exact', head: true });
         console.log('Services count:', services, 'Error:', servicesError);
         serviceCount = services || 0;
 
-        const { count: staff, error: staffError } = await supabaseAdmin
+        const { count: staff, error: staffError } = await supabase
           .from('staff')
           .select('*', { count: 'exact', head: true });
         console.log('Staff count:', staff, 'Error:', staffError);
         staffCount = staff || 0;
 
-        const { count: appointments, error: appointmentsError } = await supabaseAdmin
+        const { count: appointments, error: appointmentsError } = await supabase
           .from('appointments')
           .select('*', { count: 'exact', head: true });
         console.log('Appointments count:', appointments, 'Error:', appointmentsError);
         appointmentCount = appointments || 0;
       } else if (actualUserBusinessId) {
-        // Business owner sadece kendi işletmesini görebilir
+        // Business owner sadece kendi işletmesini görebilir - RLS policy sayesinde
         console.log('Loading stats for Business Owner with business_id:', actualUserBusinessId);
         businessCount = 1;
 
-        const { count: services, error: servicesError } = await supabaseAdmin
+        const { count: services, error: servicesError } = await supabase
           .from('services')
           .select('*', { count: 'exact', head: true })
           .eq('business_id', actualUserBusinessId);
         console.log('Services count for business:', services, 'Error:', servicesError);
         serviceCount = services || 0;
 
-        const { count: staff, error: staffError } = await supabaseAdmin
+        const { count: staff, error: staffError } = await supabase
           .from('staff')
           .select('*', { count: 'exact', head: true })
           .eq('business_id', actualUserBusinessId);
         console.log('Staff count for business:', staff, 'Error:', staffError);
         staffCount = staff || 0;
 
-        // Business owner için randevu sayısını services üzerinden hesapla
-        const { data: userServices } = await supabaseAdmin
-          .from('services')
-          .select('id')
+        // Business owner için randevu sayısını business_id üzerinden hesapla
+        const { count: appointments } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
           .eq('business_id', actualUserBusinessId);
-        
-        if (userServices && userServices.length > 0) {
-          const serviceIds = userServices.map(s => s.id);
-          const { count: appointments } = await supabaseAdmin
-            .from('appointments')
-            .select('*', { count: 'exact', head: true })
-            .in('service_id', serviceIds);
-          appointmentCount = appointments || 0;
-        } else {
-          appointmentCount = 0;
-        }
+        appointmentCount = appointments || 0;
       }
 
       const finalStats = {
@@ -181,8 +179,8 @@ export default function AdminPage() {
       
       console.log('Loading appointments - isOwner:', actualIsOwner, 'userBusinessId:', actualUserBusinessId);
       
-      // Her durumda supabaseAdmin kullan (RLS bypass için)
-      let query = supabaseAdmin
+      // RLS policy sayesinde her kullanıcı sadece kendi randevularını görecek
+      let query = supabase
         .from('appointments')
         .select(`
           *,
@@ -195,27 +193,10 @@ export default function AdminPage() {
         `)
         .order('appointment_date', { ascending: true });
 
-      // Business owner ise sadece kendi işletmesinin randevularını göster
+      // Business owner için business_id filtresi (RLS zaten yapıyor ama ekstra güvenlik)
       if (!actualIsOwner && actualUserBusinessId) {
         console.log('🔍 Business owner randevu yükleme - business_id:', actualUserBusinessId);
-        
-        // Önce kendi işletmesinin hizmetlerini al
-        const { data: userServices, error: servicesError } = await supabaseAdmin
-          .from('services')
-          .select('id, name')
-          .eq('business_id', actualUserBusinessId);
-        
-        console.log('🔍 User services:', userServices, 'Error:', servicesError);
-        
-        if (userServices && userServices.length > 0) {
-          const serviceIds = userServices.map(s => s.id);
-          console.log('🔍 Service IDs for filtering:', serviceIds);
-          query = query.in('service_id', serviceIds);
-        } else {
-          console.log('🔍 No services found, setting service_id to null');
-          // Hizmet yoksa randevu da yok
-          query = query.is('service_id', null);
-        }
+        query = query.eq('business_id', actualUserBusinessId);
       }
 
       const { data: appointments, error } = await query;
@@ -345,8 +326,8 @@ export default function AdminPage() {
     try {
       setDebugInfo('Testing Supabase connection...');
       
-      // Test basic connection - supabaseAdmin kullan
-      const { data: profiles, error: profilesError } = await supabaseAdmin
+      // Test basic connection
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, role')
         .limit(3);
@@ -357,7 +338,7 @@ export default function AdminPage() {
       }
       
       // Test businesses
-      const { data: businesses, error: businessesError } = await supabaseAdmin
+      const { data: businesses, error: businessesError } = await supabase
         .from('businesses')
         .select('id, name')
         .limit(3);
@@ -368,7 +349,7 @@ export default function AdminPage() {
       }
       
       // Test services
-      const { data: services, error: servicesError } = await supabaseAdmin
+      const { data: services, error: servicesError } = await supabase
         .from('services')
         .select('id, name')
         .limit(3);
@@ -379,7 +360,7 @@ export default function AdminPage() {
       }
       
       // Test staff
-      const { data: staff, error: staffError } = await supabaseAdmin
+      const { data: staff, error: staffError } = await supabase
         .from('staff')
         .select('id, name')
         .limit(3);
@@ -389,8 +370,8 @@ export default function AdminPage() {
         return;
       }
       
-      // Test appointments - use supabaseAdmin to bypass RLS
-      const { data: appointments, error: appointmentsError } = await supabaseAdmin
+      // Test appointments
+      const { data: appointments, error: appointmentsError } = await supabase
         .from('appointments')
         .select('id, customer_name, appointment_date, appointment_time, status')
         .limit(3);
@@ -416,6 +397,25 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-xl">Yükleniyor...</div>
+      </div>
+    );
+  }
+
+  // GÜVENLİK: Eğer business owner'a işletme atanmamışsa
+  if (error && !isOwner) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md p-8 bg-white rounded-lg shadow-lg text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Erişim Engellendi</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link 
+            href="/" 
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+          >
+            Ana Sayfaya Dön
+          </Link>
+        </div>
       </div>
     );
   }

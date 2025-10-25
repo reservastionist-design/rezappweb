@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import Link from 'next/link';
 
 export default function AdminStaffPage() {
@@ -18,6 +17,7 @@ export default function AdminStaffPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   
   const [newStaff, setNewStaff] = useState({
     name: '',
@@ -56,7 +56,7 @@ export default function AdminStaffPage() {
       }
       
       // Business owner kontrolü
-      const { data: profile, error: profileError } = await supabaseAdmin
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, business_id')
         .eq('auth_user_id', session.user.id)
@@ -70,6 +70,15 @@ export default function AdminStaffPage() {
       }
 
       // Business owner için data yükle
+      
+      // GÜVENLİK: Business ID kontrolü
+      if (!profile.business_id) {
+        console.error('Business owner has no business_id assigned!');
+        setError('⚠️ Size henüz bir işletme atanmamış. Lütfen sistem yöneticisi ile iletişime geçin.');
+        setLoading(false);
+        return;
+      }
+      
       setUserBusinessId(profile.business_id);
       await loadStaff(profile.business_id, false);
       await loadBusinesses(profile.business_id, false);
@@ -84,7 +93,7 @@ export default function AdminStaffPage() {
 
   const loadStaff = async (businessId?: string, isOwnerParam?: boolean) => {
     try {
-      let query = supabaseAdmin
+      let query = supabase
         .from('staff')
         .select(`
           *,
@@ -117,7 +126,7 @@ export default function AdminStaffPage() {
 
   const loadBusinesses = async (businessId?: string, isOwnerParam?: boolean) => {
     try {
-      let query = supabaseAdmin
+      let query = supabase
         .from('businesses')
         .select('*')
         .order('name', { ascending: true });
@@ -145,7 +154,7 @@ export default function AdminStaffPage() {
 
   const loadServices = async (businessId?: string, isOwnerParam?: boolean) => {
     try {
-      let query = supabaseAdmin
+      let query = supabase
         .from('services')
         .select('*')
         .order('name', { ascending: true });
@@ -178,7 +187,7 @@ export default function AdminStaffPage() {
 
     try {
       // Önce kullanıcının zaten var olup olmadığını kontrol et
-      const { data: existingProfile } = await supabaseAdmin
+      const { data: existingProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', newStaff.email)
@@ -204,7 +213,7 @@ export default function AdminStaffPage() {
 
       if (existingProfile) {
         // Kullanıcı zaten varsa, rolünü ve business_id'sini güncelle
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await supabase
           .from('profiles')
           .update({ 
             role: 'staff',
@@ -218,7 +227,7 @@ export default function AdminStaffPage() {
         }
       } else {
         // Yeni profil oluştur (auth kullanıcısı olmadan)
-        const { error: profileError } = await supabaseAdmin
+        const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             auth_user_id: null, // Auth kullanıcısı yok
@@ -241,7 +250,7 @@ export default function AdminStaffPage() {
         business_id: businessId // Doğrudan gönder
       };
       
-      const { error: staffError, data: insertedData } = await supabaseAdmin
+      const { error: staffError, data: insertedData } = await supabase
         .from('staff')
         .insert(staffData)
         .select();
@@ -255,7 +264,7 @@ export default function AdminStaffPage() {
       if (insertedData && insertedData[0]) {
         const staffId = insertedData[0].id;
         
-        const { error: profileUpdateError } = await supabaseAdmin
+        const { error: profileUpdateError } = await supabase
           .from('profiles')
           .update({ staff_id: staffId })
           .eq('email', newStaff.email);
@@ -275,7 +284,7 @@ export default function AdminStaffPage() {
           service_id: serviceId
         }));
 
-        const { error: staffServicesError } = await supabaseAdmin
+        const { error: staffServicesError } = await supabase
           .from('staff_services')
           .insert(staffServicesData);
 
@@ -310,7 +319,7 @@ export default function AdminStaffPage() {
     }
 
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('staff')
         .delete()
         .eq('id', staffId);
@@ -330,7 +339,7 @@ export default function AdminStaffPage() {
   const fixStaffConnection = async (staffId: string, staffEmail: string) => {
     try {
       // Profiles tablosunda staff_id'yi güncelle
-      const { error: profileError } = await supabaseAdmin
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ staff_id: staffId })
         .eq('email', staffEmail);
@@ -356,20 +365,39 @@ export default function AdminStaffPage() {
     );
   }
 
+  // GÜVENLİK: Eğer business owner'a işletme atanmamışsa
+  if (error && !isOwner) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md p-8 bg-white rounded-lg shadow-lg text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Erişim Engellendi</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link 
+            href="/" 
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+          >
+            Ana Sayfaya Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-blue-600">📅 RezApp Admin</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-700">📅 RezApp Admin</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600">Hoş geldin, {user?.email}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <span className="text-sm sm:text-base text-gray-600">Hoş geldin, {user?.email}</span>
               <Link 
                 href="/" 
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base"
               >
                 Ana Sayfa
               </Link>
@@ -382,7 +410,7 @@ export default function AdminStaffPage() {
                     console.error('Logout error:', error);
                   }
                 }}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+                className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors text-sm sm:text-base"
               >
                 Çıkış
               </button>
@@ -394,27 +422,27 @@ export default function AdminStaffPage() {
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <Link href="/admin" className="text-gray-600 hover:text-blue-600 py-4">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
+            <Link href="/admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Dashboard
             </Link>
-            <Link href="/admin/businesses" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/businesses" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               İşletmeler
             </Link>
-            <Link href="/admin/services" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/services" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Hizmetler
             </Link>
-            <Link href="/admin/staff" className="border-b-2 border-blue-600 text-blue-600 py-4">
+            <Link href="/admin/staff" className="border-b-2 border-slate-600 text-slate-600 py-4 font-medium whitespace-nowrap text-sm sm:text-base">
               Personel
             </Link>
-            <Link href="/admin/appointments" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/appointments" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Randevular
             </Link>
-            <Link href="/admin/availability" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/availability" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Müsaitlik
             </Link>
             {user?.email === 'furkanaydemirie@gmail.com' && (
-              <Link href="/super-admin" className="text-gray-600 hover:text-blue-600 py-4">
+              <Link href="/super-admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
                 Business Owner Panel
               </Link>
             )}
@@ -586,14 +614,14 @@ export default function AdminStaffPage() {
                       <div className="flex space-x-2">
                         <button 
                           onClick={() => fixStaffConnection(person.id, person.email)}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
+                          className="text-blue-600 hover:text-blue-800 text-sm flex-shrink-0 p-1"
                           title="Bağlantıyı Düzelt"
                         >
                           🔧
                         </button>
                         <button 
                           onClick={() => deleteStaff(person.id)}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-600 hover:text-red-800 flex-shrink-0 p-1"
                           title="Sil"
                         >
                           🗑️

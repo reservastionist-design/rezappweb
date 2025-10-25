@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import Link from 'next/link';
+import { TURKEY_CITIES, getDistrictsByCity } from '@/lib/turkey-cities';
 
 export default function AdminBusinessesPage() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function AdminBusinessesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [userBusinessId, setUserBusinessId] = useState<string | null>(null);
   
@@ -23,6 +24,7 @@ export default function AdminBusinessesPage() {
     slug: '',
     description: '',
     address: '',
+    city: '',
     district: '',
     phone: '',
     email: '',
@@ -44,15 +46,13 @@ export default function AdminBusinessesPage() {
     sunday_end: ''
   });
 
-  const districts = [
-    'Adalar', 'Arnavutköy', 'Ataşehir', 'Avcılar', 'Bağcılar', 'Bahçelievler',
-    'Bakırköy', 'Başakşehir', 'Bayrampaşa', 'Beşiktaş', 'Beykoz', 'Beylikdüzü',
-    'Beyoğlu', 'Büyükçekmece', 'Çatalca', 'Çekmeköy', 'Esenler', 'Esenyurt',
-    'Eyüpsultan', 'Fatih', 'Gaziosmanpaşa', 'Güngören', 'Kadıköy', 'Kağıthane',
-    'Kartal', 'Küçükçekmece', 'Maltepe', 'Pendik', 'Sancaktepe', 'Sarıyer',
-    'Silivri', 'Sultanbeyli', 'Sultangazi', 'Şile', 'Şişli', 'Tuzla',
-    'Ümraniye', 'Üsküdar', 'Zeytinburnu'
-  ];
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
+
+  // Şehir değiştiğinde ilçeleri güncelle
+  const handleCityChange = (city: string) => {
+    setNewBusiness({...newBusiness, city, district: ''});
+    setAvailableDistricts(getDistrictsByCity(city));
+  };
 
   useEffect(() => {
     checkUser();
@@ -86,7 +86,7 @@ export default function AdminBusinessesPage() {
       }
       
       // Business owner kontrolü
-      const { data: profile, error: profileError } = await supabaseAdmin
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, business_id')
         .eq('auth_user_id', session.user.id)
@@ -107,6 +107,15 @@ export default function AdminBusinessesPage() {
 
       // Business owner için data yükle
       console.log('Loading data for business owner');
+      
+      // GÜVENLİK: Business ID kontrolü
+      if (!profile.business_id) {
+        console.error('Business owner has no business_id assigned!');
+        setError('⚠️ Size henüz bir işletme atanmamış. Lütfen sistem yöneticisi ile iletişime geçin.');
+        setLoading(false);
+        return;
+      }
+      
       setUserBusinessId(profile.business_id);
       await loadBusinesses(profile.business_id, false);
       
@@ -120,7 +129,7 @@ export default function AdminBusinessesPage() {
 
   const loadBusinesses = async (businessId?: string, isOwnerParam?: boolean) => {
     try {
-      let query = supabaseAdmin
+      let query = supabase
         .from('businesses')
         .select('*')
         .order('created_at', { ascending: false });
@@ -149,7 +158,7 @@ export default function AdminBusinessesPage() {
   const loadAvailableBusinessOwners = async () => {
     try {
       // Business owner rolündeki kullanıcıları getir (business_id null olanlar)
-      const { data: availableOwners, error } = await supabaseAdmin
+      const { data: availableOwners, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('role', 'business_owner')
@@ -180,11 +189,12 @@ export default function AdminBusinessesPage() {
     }
 
     try {
-      const { data: business, error } = await supabaseAdmin
+      const { data: business, error } = await supabase
         .from('businesses')
         .insert({
           name: newBusiness.name,
           slug: newBusiness.slug,
+          city: newBusiness.city,
           district: newBusiness.district,
           address: newBusiness.address,
           phone: newBusiness.phone,
@@ -234,6 +244,7 @@ export default function AdminBusinessesPage() {
         slug: '',
         description: '',
         address: '',
+        city: '',
         district: '',
         phone: '',
         email: '',
@@ -254,6 +265,7 @@ export default function AdminBusinessesPage() {
         sunday_start: '',
         sunday_end: ''
       });
+      setAvailableDistricts([]);
       setShowAddForm(false);
       await loadBusinesses();
       await loadAvailableBusinessOwners();
@@ -270,7 +282,7 @@ export default function AdminBusinessesPage() {
     }
 
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('businesses')
         .delete()
         .eq('id', businessId);
@@ -295,20 +307,39 @@ export default function AdminBusinessesPage() {
     );
   }
 
+  // GÜVENLİK: Eğer business owner'a işletme atanmamışsa
+  if (error && !isOwner) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md p-8 bg-white rounded-lg shadow-lg text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Erişim Engellendi</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link 
+            href="/" 
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+          >
+            Ana Sayfaya Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-blue-600">📅 RezApp Admin</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-700">📅 RezApp Admin</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600">Hoş geldin, {user?.email}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <span className="text-sm sm:text-base text-gray-600">Hoş geldin, {user?.email}</span>
               <Link 
                 href="/" 
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base"
               >
                 Ana Sayfa
               </Link>
@@ -321,7 +352,7 @@ export default function AdminBusinessesPage() {
                     console.error('Logout error:', error);
                   }
                 }}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+                className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors text-sm sm:text-base"
               >
                 Çıkış
               </button>
@@ -333,27 +364,27 @@ export default function AdminBusinessesPage() {
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <Link href="/admin" className="text-gray-600 hover:text-blue-600 py-4">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
+            <Link href="/admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Dashboard
             </Link>
-            <Link href="/admin/businesses" className="border-b-2 border-blue-600 text-blue-600 py-4">
+            <Link href="/admin/businesses" className="border-b-2 border-slate-600 text-slate-600 py-4 font-medium whitespace-nowrap text-sm sm:text-base">
               İşletmeler
             </Link>
-            <Link href="/admin/services" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/services" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Hizmetler
             </Link>
-            <Link href="/admin/staff" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/staff" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Personel
             </Link>
-            <Link href="/admin/appointments" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/appointments" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Randevular
             </Link>
-            <Link href="/admin/availability" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/availability" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Müsaitlik
             </Link>
             {user?.email === 'furkanaydemirie@gmail.com' && (
-              <Link href="/super-admin" className="text-gray-600 hover:text-blue-600 py-4">
+              <Link href="/super-admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
                 Business Owner Panel
               </Link>
             )}
@@ -418,18 +449,47 @@ export default function AdminBusinessesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">İlçe *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Şehir *</label>
                 <select 
-                  value={newBusiness.district}
-                  onChange={(e) => setNewBusiness({...newBusiness, district: e.target.value})}
+                  value={newBusiness.city}
+                  onChange={(e) => handleCityChange(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                   required
                 >
-                  <option value="">İlçe Seçin</option>
-                  {districts.map(district => (
-                    <option key={district} value={district}>{district}</option>
+                  <option value="">Şehir Seçin</option>
+                  {TURKEY_CITIES.map(city => (
+                    <option key={city} value={city}>{city}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">İlçe *</label>
+                {availableDistricts.length > 0 ? (
+                  <select 
+                    value={newBusiness.district}
+                    onChange={(e) => setNewBusiness({...newBusiness, district: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    required
+                  >
+                    <option value="">İlçe Seçin</option>
+                    {availableDistricts.map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    type="text" 
+                    value={newBusiness.district}
+                    onChange={(e) => setNewBusiness({...newBusiness, district: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2" 
+                    placeholder={newBusiness.city ? "İlçe Adını Manuel Girin" : "Önce Şehir Seçin"} 
+                    required
+                    disabled={!newBusiness.city}
+                  />
+                )}
+                <p className="text-sm text-gray-500 mt-1">
+                  {newBusiness.city && availableDistricts.length === 0 && '✍️ Bu şehir için lütfen ilçeyi manuel girin'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
@@ -563,11 +623,12 @@ export default function AdminBusinessesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {businesses.map((business) => (
                   <div key={business.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold">{business.name}</h4>
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <h4 className="font-semibold flex-1 min-w-0 truncate">{business.name}</h4>
                       <button 
                         onClick={() => deleteBusiness(business.id)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 flex-shrink-0 p-1"
+                        title="Sil"
                       >
                         🗑️
                       </button>

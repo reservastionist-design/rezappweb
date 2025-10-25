@@ -274,28 +274,81 @@ export default function AvailabilityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Müsaitlik Yönetimi</h1>
-              {isOwner && (
-                <p className="text-sm text-emerald-600 mt-1">👑 Owner - Tüm personellerin müsaitliklerini yönetebilirsiniz</p>
-              )}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
+            <div className="flex items-center">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-700">📅 RezApp Admin</h1>
             </div>
-            <div className="flex space-x-4">
-              <a href="/admin" className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700">
-                Dashboard
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <span className="text-sm sm:text-base text-gray-600">Hoş geldin, {user?.email}</span>
+              <a 
+                href="/" 
+                className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base"
+              >
+                Ana Sayfa
               </a>
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+              <button 
+                onClick={async () => {
+                  try {
+                    await supabase.auth.signOut();
+                    router.push('/');
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                  }
+                }}
+                className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors text-sm sm:text-base"
               >
                 Çıkış
               </button>
             </div>
           </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
+            <a href="/admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
+              Dashboard
+            </a>
+            <a href="/admin/businesses" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
+              İşletmeler
+            </a>
+            <a href="/admin/services" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
+              Hizmetler
+            </a>
+            <a href="/admin/staff" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
+              Personel
+            </a>
+            <a href="/admin/appointments" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
+              Randevular
+            </a>
+            <a href="/admin/availability" className="border-b-2 border-slate-600 text-slate-600 py-4 font-medium whitespace-nowrap text-sm sm:text-base">
+              Müsaitlik
+            </a>
+            {user?.email === 'furkanaydemirie@gmail.com' && (
+              <a href="/super-admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
+                Business Owner Panel
+              </a>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-slate-800">Müsaitlik Yönetimi</h2>
+          {isOwner && (
+            <p className="text-sm text-emerald-600 mt-2">👑 Owner - Tüm personellerin müsaitliklerini yönetebilirsiniz</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
 
           {message && (
             <div className={`p-4 rounded-md mb-6 ${

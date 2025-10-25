@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import Link from 'next/link';
 
 export default function AdminServicesPage() {
@@ -17,6 +16,7 @@ export default function AdminServicesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   
   const [newService, setNewService] = useState({
     name: '',
@@ -53,7 +53,7 @@ export default function AdminServicesPage() {
       }
       
       // Business owner kontrolü
-      const { data: profile, error: profileError } = await supabaseAdmin
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, business_id')
         .eq('auth_user_id', session.user.id)
@@ -67,6 +67,15 @@ export default function AdminServicesPage() {
       }
 
       // Business owner için data yükle
+      
+      // GÜVENLİK: Business ID kontrolü
+      if (!profile.business_id) {
+        console.error('Business owner has no business_id assigned!');
+        setError('⚠️ Size henüz bir işletme atanmamış. Lütfen sistem yöneticisi ile iletişime geçin.');
+        setLoading(false);
+        return;
+      }
+      
       setUserBusinessId(profile.business_id);
       await loadServices(profile.business_id, false);
       await loadBusinesses(profile.business_id, false);
@@ -80,7 +89,7 @@ export default function AdminServicesPage() {
 
   const loadServices = async (businessId?: string, isOwnerParam?: boolean) => {
     try {
-      let query = supabaseAdmin
+      let query = supabase
         .from('services')
         .select(`
           *,
@@ -113,7 +122,7 @@ export default function AdminServicesPage() {
 
   const loadBusinesses = async (businessId?: string, isOwnerParam?: boolean) => {
     try {
-      let query = supabaseAdmin
+      let query = supabase
         .from('businesses')
         .select('*')
         .order('name', { ascending: true });
@@ -161,7 +170,7 @@ export default function AdminServicesPage() {
         }
       }
       
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('services')
         .insert({
           name: newService.name,
@@ -199,7 +208,7 @@ export default function AdminServicesPage() {
     }
 
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('services')
         .delete()
         .eq('id', serviceId);
@@ -224,20 +233,39 @@ export default function AdminServicesPage() {
     );
   }
 
+  // GÜVENLİK: Eğer business owner'a işletme atanmamışsa
+  if (error && !isOwner) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md p-8 bg-white rounded-lg shadow-lg text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Erişim Engellendi</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link 
+            href="/" 
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+          >
+            Ana Sayfaya Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-blue-600">📅 RezApp Admin</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-700">📅 RezApp Admin</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600">Hoş geldin, {user?.email}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <span className="text-sm sm:text-base text-gray-600">Hoş geldin, {user?.email}</span>
               <Link 
                 href="/" 
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base"
               >
                 Ana Sayfa
               </Link>
@@ -250,7 +278,7 @@ export default function AdminServicesPage() {
                     console.error('Logout error:', error);
                   }
                 }}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+                className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors text-sm sm:text-base"
               >
                 Çıkış
               </button>
@@ -262,27 +290,27 @@ export default function AdminServicesPage() {
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <Link href="/admin" className="text-gray-600 hover:text-blue-600 py-4">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
+            <Link href="/admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Dashboard
             </Link>
-            <Link href="/admin/businesses" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/businesses" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               İşletmeler
             </Link>
-            <Link href="/admin/services" className="border-b-2 border-blue-600 text-blue-600 py-4">
+            <Link href="/admin/services" className="border-b-2 border-slate-600 text-slate-600 py-4 font-medium whitespace-nowrap text-sm sm:text-base">
               Hizmetler
             </Link>
-            <Link href="/admin/staff" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/staff" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Personel
             </Link>
-            <Link href="/admin/appointments" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/appointments" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Randevular
             </Link>
-            <Link href="/admin/availability" className="text-gray-600 hover:text-blue-600 py-4">
+            <Link href="/admin/availability" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
               Müsaitlik
             </Link>
             {user?.email === 'furkanaydemirie@gmail.com' && (
-              <Link href="/super-admin" className="text-gray-600 hover:text-blue-600 py-4">
+              <Link href="/super-admin" className="text-slate-500 hover:text-slate-700 py-4 transition-colors duration-200 whitespace-nowrap text-sm sm:text-base">
                 Business Owner Panel
               </Link>
             )}
@@ -420,11 +448,12 @@ export default function AdminServicesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {services.map((service) => (
                   <div key={service.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold">{service.name}</h4>
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <h4 className="font-semibold flex-1 min-w-0 truncate">{service.name}</h4>
                       <button 
                         onClick={() => deleteService(service.id)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 flex-shrink-0 p-1"
+                        title="Sil"
                       >
                         🗑️
                       </button>

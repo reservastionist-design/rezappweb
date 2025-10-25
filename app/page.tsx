@@ -77,21 +77,22 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-emerald-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-3 sm:gap-0">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <h1 className="text-xl sm:text-2xl font-bold text-emerald-700">📅 RezApp</h1>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <div className="flex items-center gap-2 sm:gap-4">
               {user ? (
                 <>
-                  <span className="text-sm sm:text-base text-gray-600 w-full sm:w-auto truncate">Hoş geldin, {user.email}</span>
+                  <span className="hidden sm:inline text-sm sm:text-base text-gray-600 truncate">Hoş geldin, {user.email}</span>
                   {/* Owner ve Business Owner için Admin Panel */}
                   {(userRole === 'owner' || userRole === 'business_owner') && (
                     <Link 
                       href="/admin" 
                       className="bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm text-sm sm:text-base whitespace-nowrap"
                     >
-                      Yönetim Paneli
+                      <span className="hidden sm:inline">Yönetim Paneli</span>
+                      <span className="sm:hidden">Admin</span>
                     </Link>
                   )}
                   {/* Staff için Takvim */}
@@ -103,12 +104,12 @@ export default function HomePage() {
                       Takvim
                     </Link>
                   )}
-                  {/* Debug button removed for production */}
                   <button 
                     onClick={handleLogout}
                     className="bg-gray-200 text-gray-800 px-3 sm:px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm sm:text-base whitespace-nowrap"
                   >
-                    Çıkış
+                    <span className="hidden sm:inline">Çıkış Yap</span>
+                    <span className="sm:hidden">Çıkış</span>
                   </button>
                 </>
               ) : (

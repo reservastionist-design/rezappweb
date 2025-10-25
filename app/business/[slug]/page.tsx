@@ -140,9 +140,9 @@ export default function BusinessPage() {
               </Link>
               <Link 
                 href="/book" 
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
               >
-                Randevu Al
+                📅 Randevu Al
               </Link>
             </div>
           </div>

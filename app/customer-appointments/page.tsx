@@ -21,22 +21,7 @@ export default function CustomerAppointments() {
     setMessage('');
 
     try {
-      // Önce profili bul
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email, name')
-        .eq('email', email.trim())
-        .eq('role', 'customer')
-        .single();
-
-      if (!profile) {
-        setMessage('Bu email adresi ile kayıtlı randevu bulunamadı');
-        setAppointments([]);
-        setSearched(true);
-        return;
-      }
-
-      // Randevuları getir
+      // Direkt randevuları email ile ara (profile kontrolü gereksiz - çünkü herkes randevu alabilir)
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select(`
@@ -51,7 +36,7 @@ export default function CustomerAppointments() {
             )
           )
         `)
-        .eq('customer_email', email.trim())
+        .eq('customer_email', email.trim().toLowerCase())
         .order('appointment_date', { ascending: false })
         .order('appointment_time', { ascending: false });
 

@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { TURKEY_CITIES, getDistrictsByCity } from '@/lib/turkey-cities';
 
 export default function BusinessRegisterPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     category: '',
+    city: '',
     district: '',
     businessName: '',
     address: '',
@@ -18,6 +20,7 @@ export default function BusinessRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
 
   const categories = [
     { name: 'Berber', slug: 'barber' },
@@ -26,17 +29,14 @@ export default function BusinessRegisterPage() {
     { name: 'Spor Salonu', slug: 'gym' },
   ];
 
-  const istanbulDistricts = [
-    'Adalar', 'Arnavutköy', 'Ataşehir', 'Avcılar', 'Bağcılar', 'Bahçelievler', 'Bakırköy', 'Başakşehir',
-    'Bayrampaşa', 'Beşiktaş', 'Beykoz', 'Beylikdüzü', 'Beyoğlu', 'Büyükçekmece', 'Çatalca', 'Çekmeköy',
-    'Esenler', 'Esenyurt', 'Eyüpsultan', 'Fatih', 'Gaziosmanpaşa', 'Güngören', 'Kadıköy', 'Kağıthane',
-    'Kartal', 'Küçükçekmece', 'Maltepe', 'Pendik', 'Sancaktepe', 'Sarıyer', 'Silivri', 'Sultanbeyli',
-    'Sultangazi', 'Şile', 'Şişli', 'Tuzla', 'Ümraniye', 'Üsküdar', 'Zeytinburnu'
-  ];
+  const handleCityChange = (city: string) => {
+    setFormData({...formData, city, district: ''});
+    setAvailableDistricts(getDistrictsByCity(city));
+  };
 
   const handleStep1 = () => {
-    if (!formData.category || !formData.district) {
-      setError('Lütfen kategori ve ilçe seçin');
+    if (!formData.category || !formData.city || !formData.district) {
+      setError('Lütfen kategori, şehir ve ilçe seçin');
       return;
     }
     setStep(2);
@@ -64,6 +64,7 @@ export default function BusinessRegisterPage() {
           owner_id: session.user.id,
           name: formData.businessName,
           category: formData.category,
+          city: formData.city,
           district: formData.district,
           address: formData.address,
           phone: formData.phone,
@@ -126,7 +127,7 @@ export default function BusinessRegisterPage() {
               </div>
             </div>
             <div className="flex justify-between mt-2 text-sm text-gray-600">
-              <span>Kategori & İlçe</span>
+              <span>Kategori & Konum</span>
               <span>İşletme Bilgileri</span>
             </div>
           </div>
@@ -161,20 +162,52 @@ export default function BusinessRegisterPage() {
 
               <div className="mb-6">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
-                  İstanbul İlçesi
+                  Şehir
                 </label>
                 <select
                   className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  value={formData.district}
-                  onChange={(e) => setFormData({...formData, district: e.target.value})}
+                  value={formData.city}
+                  onChange={(e) => handleCityChange(e.target.value)}
                 >
-                  <option value="">İlçe Seçin</option>
-                  {istanbulDistricts.map((district) => (
-                    <option key={district} value={district}>
-                      {district}
+                  <option value="">Şehir Seçin</option>
+                  {TURKEY_CITIES.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  İlçe
+                </label>
+                {availableDistricts.length > 0 ? (
+                  <select
+                    className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    value={formData.district}
+                    onChange={(e) => setFormData({...formData, district: e.target.value})}
+                  >
+                    <option value="">İlçe Seçin</option>
+                    {availableDistricts.map((district) => (
+                      <option key={district} value={district}>
+                        {district}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    value={formData.district}
+                    onChange={(e) => setFormData({...formData, district: e.target.value})}
+                    placeholder={formData.city ? "İlçe Adını Manuel Girin" : "Önce Şehir Seçin"}
+                    disabled={!formData.city}
+                  />
+                )}
+                {formData.city && availableDistricts.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1">✍️ Bu şehir için lütfen ilçeyi manuel girin</p>
+                )}
               </div>
 
               <button

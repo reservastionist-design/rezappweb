@@ -14,12 +14,10 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
-// İstanbul koordinatları
+// Türkiye koordinatları
+const TURKEY_CENTER: [number, number] = [39.0, 35.0]; // Türkiye merkezi
 const ISTANBUL_CENTER: [number, number] = [41.0082, 28.9784];
-const ISTANBUL_BOUNDS: [[number, number], [number, number]] = [
-  [40.8, 28.5], // Güneybatı
-  [41.3, 29.5]  // Kuzeydoğu
-];
+// Bounds kaldırıldı - Türkiye geneli için dinamik olacak
 
 // İlçe koordinatları (örnek)
 const DISTRICT_COORDINATES: { [key: string]: [number, number] } = {
@@ -63,6 +61,7 @@ const DISTRICT_COORDINATES: { [key: string]: [number, number] } = {
 interface Business {
   id: string;
   name: string;
+  city: string;
   district: string;
   address?: string;
   description?: string;
@@ -82,12 +81,14 @@ interface Service {
 export default function MapPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedService, setSelectedService] = useState<string>('all');
+  const [selectedCity, setSelectedCity] = useState<string>('all');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
   const [services, setServices] = useState<Service[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mapCenter, setMapCenter] = useState<[number, number]>(ISTANBUL_CENTER);
-  const [mapZoom, setMapZoom] = useState(10);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(TURKEY_CENTER);
+  const [mapZoom, setMapZoom] = useState(6);
 
   useEffect(() => {
     // Leaflet fix'i client-side'da yükle
@@ -141,6 +142,10 @@ export default function MapPage() {
       setBusinesses(businessesWithCoords);
       setServices(servicesData || []);
 
+      // Şehirleri çıkar
+      const uniqueCities = [...new Set((businessesData || []).map(b => b.city).filter(Boolean))];
+      setCities(uniqueCities.sort());
+
       // İlçeleri çıkar
       const uniqueDistricts = [...new Set((businessesData || []).map(b => b.district).filter(Boolean))];
       setDistricts(uniqueDistricts.sort());
@@ -161,6 +166,10 @@ export default function MapPage() {
       );
     }
 
+    if (selectedCity !== 'all') {
+      filtered = filtered.filter(business => business.city === selectedCity);
+    }
+
     if (selectedDistrict !== 'all') {
       filtered = filtered.filter(business => business.district === selectedDistrict);
     }
@@ -173,7 +182,8 @@ export default function MapPage() {
     if (business.address && business.address.trim() !== '') {
       try {
         console.log('Geocoding for:', business.name, business.address);
-        const response = await fetch(`/api/geocode?address=${encodeURIComponent(business.address)}`);
+        const fullAddress = `${business.address}, ${business.district}, ${business.city}, Türkiye`;
+        const response = await fetch(`/api/geocode?address=${encodeURIComponent(fullAddress)}`);
         if (response.ok) {
           const data = await response.json();
           if (data.lat && data.lng) {
@@ -188,18 +198,34 @@ export default function MapPage() {
       }
     }
 
-    // Geocoding başarısız olursa ilçe koordinatlarını kullan
-    const districtCoords = DISTRICT_COORDINATES[business.district];
-    if (districtCoords) {
-      // İlçe merkezinden küçük rastgele offset ekle (daha küçük yapalım)
-      const offsetLat = (Math.random() - 0.5) * 0.002; // 0.005'ten 0.002'ye düşürdük
-      const offsetLng = (Math.random() - 0.5) * 0.002;
-      console.log('Using district coordinates for:', business.name, business.district);
-      return [districtCoords[0] + offsetLat, districtCoords[1] + offsetLng];
+    // Geocoding başarısız olursa İstanbul ilçe koordinatlarını kullan (sadece İstanbul için)
+    if (business.city === 'İstanbul' && business.district) {
+      const districtCoords = DISTRICT_COORDINATES[business.district];
+      if (districtCoords) {
+        const offsetLat = (Math.random() - 0.5) * 0.002;
+        const offsetLng = (Math.random() - 0.5) * 0.002;
+        console.log('Using district coordinates for:', business.name, business.district);
+        return [districtCoords[0] + offsetLat, districtCoords[1] + offsetLng];
+      }
     }
     
-    console.log('Using Istanbul center for:', business.name);
-    return ISTANBUL_CENTER;
+    // Son çare: Şehir adına göre geocoding yap
+    try {
+      const cityAddress = `${business.city}, Türkiye`;
+      const response = await fetch(`/api/geocode?address=${encodeURIComponent(cityAddress)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lat && data.lng) {
+          console.log('Using city coordinates for:', business.name, business.city);
+          return [data.lat, data.lng];
+        }
+      }
+    } catch (error) {
+      console.error('City geocoding failed:', error);
+    }
+    
+    console.log('Using Turkey center for:', business.name);
+    return TURKEY_CENTER;
   };
 
   const getMarkerColor = (business: Business) => {
@@ -209,14 +235,30 @@ export default function MapPage() {
     return '#10b981'; // Yeşil - genel
   };
 
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+    setSelectedDistrict('all'); // Şehir değişince ilçeyi sıfırla
+    
+    if (city !== 'all') {
+      // Seçilen şehirdeki işletmelerin ortalama koordinatını bul
+      const cityBusinesses = businesses.filter(b => b.city === city && b.coordinates);
+      if (cityBusinesses.length > 0) {
+        const avgLat = cityBusinesses.reduce((sum, b) => sum + (b.coordinates?.[0] || 0), 0) / cityBusinesses.length;
+        const avgLng = cityBusinesses.reduce((sum, b) => sum + (b.coordinates?.[1] || 0), 0) / cityBusinesses.length;
+        setMapCenter([avgLat, avgLng]);
+        setMapZoom(10);
+      }
+    } else {
+      setMapCenter(TURKEY_CENTER);
+      setMapZoom(6);
+    }
+  };
+
   const handleDistrictChange = (district: string) => {
     setSelectedDistrict(district);
-    if (district !== 'all' && DISTRICT_COORDINATES[district]) {
+    if (district !== 'all' && selectedCity === 'İstanbul' && DISTRICT_COORDINATES[district]) {
       setMapCenter(DISTRICT_COORDINATES[district]);
       setMapZoom(13);
-    } else {
-      setMapCenter(ISTANBUL_CENTER);
-      setMapZoom(10);
     }
   };
 
@@ -237,18 +279,19 @@ export default function MapPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-emerald-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="text-emerald-600 hover:text-emerald-800">
+          <div className="flex justify-between items-center py-4 gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+              <Link href="/" className="text-emerald-600 hover:text-emerald-800 text-sm sm:text-base whitespace-nowrap">
                 ← Ana Sayfa
               </Link>
-              <h1 className="text-2xl font-bold text-emerald-700">🗺️ İstanbul Haritası</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-emerald-700 truncate">🗺️ Türkiye Haritası</h1>
             </div>
             <Link 
               href="/book" 
-              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-200"
+              className="bg-emerald-600 text-white px-3 py-2 sm:px-6 sm:py-3 rounded-lg hover:bg-emerald-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl text-sm sm:text-base whitespace-nowrap flex-shrink-0"
             >
-              Randevu Al
+              <span className="hidden sm:inline">📅 Randevu Al</span>
+              <span className="sm:hidden">📅 Randevu</span>
             </Link>
           </div>
         </div>
@@ -275,16 +318,36 @@ export default function MapPage() {
             </div>
 
             <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Şehir:</label>
+              <select
+                value={selectedCity}
+                onChange={(e) => handleCityChange(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+              >
+                <option value="all">Tüm Şehirler</option>
+                {cities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">İlçe:</label>
               <select
                 value={selectedDistrict}
                 onChange={(e) => handleDistrictChange(e.target.value)}
                 className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                disabled={selectedCity === 'all'}
               >
                 <option value="all">Tüm İlçeler</option>
-                {districts.map(district => (
-                  <option key={district} value={district}>{district}</option>
-                ))}
+                {districts
+                  .filter(district => {
+                    if (selectedCity === 'all') return true;
+                    return businesses.some(b => b.city === selectedCity && b.district === district);
+                  })
+                  .map(district => (
+                    <option key={district} value={district}>{district}</option>
+                  ))}
               </select>
             </div>
 
@@ -301,7 +364,6 @@ export default function MapPage() {
           center={mapCenter}
           zoom={mapZoom}
           style={{ height: '100%', width: '100%' }}
-          bounds={ISTANBUL_BOUNDS}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -316,7 +378,7 @@ export default function MapPage() {
                 <Popup>
                   <div className="p-2 min-w-[200px]">
                     <h3 className="font-bold text-lg text-gray-900 mb-2">{business.name}</h3>
-                    <p className="text-sm text-gray-600 mb-1">📍 {business.district}</p>
+                    <p className="text-sm text-gray-600 mb-1">📍 {business.city}, {business.district}</p>
                     {business.address && (
                       <p className="text-xs text-gray-500 mb-2">🏠 {business.address}</p>
                     )}
@@ -348,12 +410,12 @@ export default function MapPage() {
                       )}
                     </div>
                     
-                    <div className="flex space-x-2 mt-3">
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <Link 
                         href={`/book?business=${business.id}`}
-                        className="inline-block bg-emerald-600 text-white text-xs px-3 py-1 rounded hover:bg-emerald-700 transition-colors"
+                        className="inline-block bg-emerald-600 text-white text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md hover:shadow-lg"
                       >
-                        Randevu Al
+                        📅 Randevu Al
                       </Link>
                       <button
                         onClick={() => {
@@ -361,7 +423,7 @@ export default function MapPage() {
                           const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
                           window.open(googleMapsUrl, '_blank');
                         }}
-                        className="inline-block bg-blue-600 text-white text-xs px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+                        className="inline-block bg-emerald-600 text-white text-xs px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg hover:bg-emerald-700 transition-colors"
                       >
                         🧭 Yol Tarifi
                       </button>

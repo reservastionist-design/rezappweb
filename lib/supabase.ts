@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 // Environment variables ile güvenli konfigürasyon
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sbityfrhgfqhebssljtk.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiaXR5ZnJoZ2ZxaGVic3NsanRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxOTkwMTEsImV4cCI6MjA3NTc3NTAxMX0.DntRyt8j0m1R06loTPQyBxT6oZcfmzbGZyvsoBwbfvg'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Service role key SADECE server-side'da kullanılır ve environment variable'dan okunur
 const supabaseServiceKey = typeof window === 'undefined' 
@@ -10,7 +10,7 @@ const supabaseServiceKey = typeof window === 'undefined'
   : undefined
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables!')
+  throw new Error('Missing Supabase environment variables! NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
